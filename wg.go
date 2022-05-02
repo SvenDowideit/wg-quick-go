@@ -210,10 +210,10 @@ func SyncAddress(cfg *Config, link netlink.Link, log logr.Logger) error {
 	// nil addr means I've used it
 	presentAddresses := make(map[string]netlink.Addr, 0)
 	for _, addr := range addrs {
-		log.WithValues(map[string]interface{}{
-			"addr":  fmt.Sprint(addr.IPNet),
-			"label": addr.Label,
-		}).V(1).Info("found existing address", "address", addr)
+		log.WithValues(
+			"addr", fmt.Sprint(addr.IPNet),
+			"label", addr.Label,
+		).V(1).Info("found existing address", "address", addr)
 		presentAddresses[addr.IPNet.String()] = addr
 	}
 
@@ -241,10 +241,10 @@ func SyncAddress(cfg *Config, link netlink.Link, log logr.Logger) error {
 		if addr.IPNet == nil {
 			continue
 		}
-		log := log.WithValues(map[string]interface{}{
-			"addr":  addr.IPNet.String(),
-			"label": addr.Label,
-		})
+		log := log.WithValues(
+			"addr", addr.IPNet.String(),
+			"label", addr.Label,
+		)
 		if err := netlink.AddrDel(link, &addr); err != nil {
 			log.Error(err, "cannot delete addr")
 			return err
@@ -294,13 +294,13 @@ func SyncRoutes(cfg *Config, link netlink.Link, managedRoutes []net.IPNet, log l
 	for _, rtLst := range wantedRoutes {
 		for _, rt := range rtLst {
 			rt := rt // make copy
-			log := log.WithValues(map[string]interface{}{
-				"route":    rt.Dst.String(),
-				"protocol": rt.Protocol,
-				"table":    rt.Table,
-				"type":     rt.Type,
-				"metric":   rt.Priority,
-			})
+			log := log.WithValues(
+				"route", rt.Dst.String(),
+				"protocol", rt.Protocol,
+				"table", rt.Table,
+				"type", rt.Type,
+				"metric", rt.Priority,
+			)
 			if err := netlink.RouteReplace(&rt); err != nil {
 				log.Error(err, "cannot add/replace route")
 				return err
@@ -319,13 +319,13 @@ func SyncRoutes(cfg *Config, link netlink.Link, managedRoutes []net.IPNet, log l
 	}
 
 	for _, rt := range presentRoutes {
-		log := log.WithValues(map[string]interface{}{
-			"route":    rt.Dst.String(),
-			"protocol": rt.Protocol,
-			"table":    rt.Table,
-			"type":     rt.Type,
-			"metric":   rt.Priority,
-		})
+		log := log.WithValues(
+			"route", rt.Dst.String(),
+			"protocol", rt.Protocol,
+			"table", rt.Table,
+			"type", rt.Type,
+			"metric", rt.Priority,
+		)
 		if !(rt.Table == cfg.Table || (cfg.Table == 0 && rt.Table == unix.RT_CLASS_MAIN)) {
 			log.V(1).Info("wrong table for route, skipping")
 			continue
