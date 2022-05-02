@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/svendowideit/wg-quick-go"
-	"github.com/sirupsen/logrus"
+	"github.com/go-logr/zapr"
+	wgquick "github.com/svendowideit/wg-quick-go"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func printHelp() {
@@ -27,41 +29,50 @@ func main() {
 		printHelp()
 	}
 
+	// setup Logging (chose this to setup for https://pkg.go.dev/go.opentelemetry.io/otel#SetLogger)
+	logLevel := 0
 	if *verbose {
-		logrus.SetLevel(logrus.DebugLevel)
+		logLevel = 2
 	}
+	zc := zap.NewProductionConfig()
+	zc.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
+	z, err := zc.Build()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialise logging: %v\n", err))
+	}
+	log := zapr.NewLogger(z)
 
 	iface := flag.Lookup("iface").Value.String()
-	log := logrus.WithField("iface", iface)
+	log = log.WithValues("iface", iface)
 
 	cfg := args[1]
 
-	_, err := os.Stat(cfg)
+	_, err = os.Stat(cfg)
 	switch {
 	case err == nil:
 	case os.IsNotExist(err):
 		if iface == "" {
 			iface = cfg
-			log = logrus.WithField("iface", iface)
+			log = log.WithValues("iface", iface)
 		}
 		cfg = "/etc/wireguard/" + cfg + ".conf"
 		_, err = os.Stat(cfg)
 		if err != nil {
-			log.WithError(err).Errorln("cannot find config file")
+			log.Error(err, "cannot find config file")
 			printHelp()
 		}
 	default:
-		logrus.WithError(err).Errorln("error while reading config file")
+		log.Error(err, "error while reading config file")
 		printHelp()
 	}
 
 	b, err := ioutil.ReadFile(cfg)
 	if err != nil {
-		logrus.WithError(err).Fatalln("cannot read file")
+		log.Error(err, "cannot read file")
 	}
 	c := &wgquick.Config{}
 	if err := c.UnmarshalText(b); err != nil {
-		logrus.WithError(err).Fatalln("cannot parse config file")
+		log.Error(err, "cannot parse config file")
 	}
 
 	c.RouteProtocol = *protocol
@@ -70,15 +81,15 @@ func main() {
 	switch args[0] {
 	case "up":
 		if err := wgquick.Up(c, iface, log); err != nil {
-			logrus.WithError(err).Errorln("cannot up interface")
+			log.Error(err, "cannot up interface")
 		}
 	case "down":
 		if err := wgquick.Down(c, iface, log); err != nil {
-			logrus.WithError(err).Errorln("cannot down interface")
+			log.Error(err, "cannot down interface")
 		}
 	case "sync":
 		if err := wgquick.Sync(c, iface, log); err != nil {
-			logrus.WithError(err).Errorln("cannot sync interface")
+			log.Error(err, "cannot sync interface")
 		}
 	default:
 		printHelp()
